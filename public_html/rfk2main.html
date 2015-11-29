@@ -57,7 +57,7 @@
 	<body>
 		<script src="three.min.js"></script>
 		<script src="PointerLockControls.js"></script>
-
+                <script src="threex.dynamictexture.js"></script>
 		<div id="blocker">
 
 			<div id="instructions">
@@ -82,7 +82,8 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
 			var raycaster;
 			var blocker = document.getElementById( 'blocker' );
 			var instructions = document.getElementById( 'instructions' );                     
-                        var planedepth; var planewidth; var myUnitSz=20;
+                        var planedepth; var planewidth; var nkiNum;
+                        var myUnitSz=20;
                         var controlsHeight=myUnitSz;
                         
                         function BasicNKI() {
@@ -128,7 +129,7 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                         }
                         function initFloor2() {
                             yobaplane2=defPlane(planewidth*myUnitSz, planedepth*myUnitSz, new THREE.Vector3(90,0,0), 
-                                                'graphon/dbgA.png', new function() {this.x=planewidth; this.y=planedepth}, 
+                                                'graphon/inside_floor.jpg', new function() {this.x=planewidth; this.y=planedepth}, 
                                                 new THREE.Vector3(0,0,0));
                             scene.add( yobaplane2 ); yobaplane2.name="yobaplane2";
                         }
@@ -224,10 +225,40 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                             planeText4.rotateY(Math.PI/2);
                         }
                         
+                        function addSingleNKI2(unitZ, unitX, NKISymbol) {
+                            var geometryBase = new THREE.BoxGeometry( myUnitSz, myUnitSz/4, myUnitSz );
+                            var material1 = new THREE.MeshBasicMaterial( {color: 0x00ff00} );
+                            var cube1 = new THREE.Mesh(geometryBase, material1);
+                            scene.add(cube1);
+                            cube1.position.setX(unitX*myUnitSz);
+                            cube1.position.setZ(unitZ*myUnitSz);
+                            cube1.position.setY(myUnitSz/8);
+                            
+                            var dynamicTexture	= new THREEx.DynamicTexture(10*2*myUnitSz/3,10*myUnitSz*2/3);
+                            dynamicTexture.context.font	= "bolder "+myUnitSz*4+"px Verdana";
+                            dynamicTexture.texture.anisotropy = renderer.getMaxAnisotropy();
+                            dynamicTexture.clear('cyan').drawText(NKISymbol, undefined, 4*myUnitSz, 'red');
+                            var letterMaterial	= new THREE.MeshBasicMaterial({map:dynamicTexture.texture});
+                            var geometryStalk = new THREE.BoxGeometry( 2*myUnitSz/3, myUnitSz*2, 2*myUnitSz/3 );
+                            var cube0 = new THREE.Mesh(geometryStalk, letterMaterial);
+                            scene.add(cube0);
+                            cube0.position.setX(unitX*myUnitSz);
+                            cube0.position.setZ(unitZ*myUnitSz);
+                            cube0.position.setY(myUnitSz);
+                            
+                            var cube2 = new THREE.Mesh(geometryBase, material1);
+                            scene.add(cube2);
+                            cube2.position.setX(unitX*myUnitSz);
+                            cube2.position.setZ(unitZ*myUnitSz);
+                            cube2.position.setY(16*myUnitSz/8);
+                            
+                           
+                        }
+                        
                         function initObjects2() {
                             
-                            addSingleNKI(2,3,"G");
-                            addSingleNKI(0,0,"B");
+                            addSingleNKI2(2,3,"G");
+                            addSingleNKI2(0,0,"B");
                         }
                         
                         function initObjects() {
@@ -413,6 +444,12 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
 				raycaster = new THREE.Raycaster( new THREE.Vector3(), new THREE.Vector3( 0, - 1, 0 ), 0, 10 );
                                 
                                 //===draw world===
+                                renderer = new THREE.WebGLRenderer({alpha:true}) ;
+				//renderer.setClearColor( 0xff0000 );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				document.body.appendChild( renderer.domElement );
+                                
                                 planedepth=40; planewidth=40;
 				// floor
                                 initFloor2();
@@ -420,11 +457,7 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
 				//initObjects();
                                 initObjects2();
 				//
-				renderer = new THREE.WebGLRenderer({alpha:true}) ;
-				//renderer.setClearColor( 0xff0000 );
-				renderer.setPixelRatio( window.devicePixelRatio );
-				renderer.setSize( window.innerWidth, window.innerHeight );
-				document.body.appendChild( renderer.domElement );
+				
 
 				//
 
