@@ -58,6 +58,7 @@
 		<script src="three.min.js"></script>
 		<script src="PointerLockControls.js"></script>
                 <script src="threex.dynamictexture.js"></script>
+                <script type="text/javascript" src="itmloader2.js"> </script>
 		<div id="blocker">
 
 			<div id="instructions">
@@ -75,6 +76,17 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                                 return deg * Math.PI / 180;
                             }
                         
+                            function getRandomInt(min, max) {
+                                return Math.floor(Math.random() * (max - min + 1)) + min;
+                            }
+                            function random_character() {
+                                var chars = "0123456789abcdefghijklmnopqurstuvwxyzABCDEFGHIJKLMNOPQURSTUVWXYZ";
+                                return chars.substr( Math.floor(Math.random() * 62), 1);
+                            }
+
+                        nkicollection = loadbase2("itmbase2.xml");
+                        //console.log(nkicollection);
+                        
 			var camera, scene, renderer;
 			var geometry, material, mesh;
 			var controls;
@@ -85,9 +97,14 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                         var planedepth; var planewidth; var nkiNum;
                         var myUnitSz=20;
                         var controlsHeight=myUnitSz;
+                        var allNKI; //array of Basic NKI. sparse array. It's ok, it won't use much memory
                         
-                        function BasicNKI() {
-                            
+                        function BasicNKI(xcoord, ycoord, descrline) { //basic struct for NKI
+                            /*integer (logic) coordinates of NKI*/
+                            this.X = xcoord;
+                            this.Y = ycoord;
+                            //a description of NKI
+                            this.descr = descrline;
                         }
                         //THREEJS and WebGL init routines
                         function defPlane(w, h, rtAngleDeg, texPath, texMode, centerPos) {
@@ -129,7 +146,7 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                         }
                         function initFloor2() {
                             yobaplane2=defPlane(planewidth*myUnitSz, planedepth*myUnitSz, new THREE.Vector3(90,0,0), 
-                                                'graphon/inside_floor.jpg', new function() {this.x=planewidth; this.y=planedepth}, 
+                                                'graphon/inside_floor.jpg', new function() {this.x=planewidth; this.y=planedepth;}, 
                                                 new THREE.Vector3(0,0,0));
                             scene.add( yobaplane2 ); yobaplane2.name="yobaplane2";
                         }
@@ -254,11 +271,41 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                             
                            
                         }
-                        
+                        /**
+                         * place randomly objects over the field
+                         * @returns {undefined}
+                         */
                         function initObjects2() {
+                            var farXBorder=-planewidth/2+1; var farYBorder=-planedepth/2+1;
+                            var closeXBorder=planewidth/2-1; var closeYBorder=planedepth/2-1;
+                            /*
+                            addSingleNKI2(-20+1,-20+1,"1");
+                            addSingleNKI2(20-1,20-1,"2");
+                            */
+                            var randXPosition = getRandomInt(farXBorder,closeXBorder);
+                            var randYPosition = getRandomInt(farYBorder,closeYBorder);
+                            console.log("(x="+randXPosition+";y="+randYPosition+")");
+                            controls.getObject().position.x=randXPosition*myUnitSz;
+                            controls.getObject().position.y=randYPosition*myUnitSz;
+                            //randomly place items over the field. use NKI for this
+                            for (var i=0; i<nkiNum; i++) {
+                                var proceedCycle=false;
+                                do { 
+                                var randXPosition = getRandomInt(farXBorder,closeXBorder);
+                                var randYPosition = getRandomInt(farYBorder,closeYBorder);
+                                    if ((typeof allNKI[randXPosition]==="undefined")||(typeof allNKI[randXPosition][randYPosition]==="undefined")) {
+                                        proceedCycle=false;
+                                        var nki_sym=random_character();
+                                        addSingleNKI2(randXPosition,randYPosition, nki_sym);
+                                        if (typeof allNKI[randXPosition]==="undefined") { allNKI[randXPosition]=[]; }
+                                        allNKI[randXPosition][randYPosition] = new BasicNKI(randXPosition, randYPosition,nki_sym);
+                                    } else {
+                                        //we already have NKI here, try again
+                                        proceedCycle=true;
+                                    }
+                                } while (proceedCycle)
+                            }
                             
-                            addSingleNKI2(2,3,"G");
-                            addSingleNKI2(0,0,"B");
                         }
                         
                         function initObjects() {
@@ -450,7 +497,8 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				document.body.appendChild( renderer.domElement );
                                 
-                                planedepth=40; planewidth=40;
+                                planedepth=40; planewidth=40; 
+                                nkiNum=20; allNKI = [];
 				// floor
                                 initFloor2();
 				// objects
