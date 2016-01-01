@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<meta charset="utf-8">
-		<title>three.js - pointerlock controls</title>
+		<title>ROBOTFINDSKITTEN</title>
 		<style>
 			html, body {
 				width: 100%;
@@ -92,6 +92,8 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
 			var controls;
 			var objects = [];
 			var raycaster;
+                        var rays;
+                        var bottomVector;
 			var blocker = document.getElementById( 'blocker' );
 			var instructions = document.getElementById( 'instructions' );                     
                         var planedepth; var planewidth; var nkiNum;
@@ -269,7 +271,17 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                             cube2.position.setZ(unitZ*myUnitSz);
                             cube2.position.setY(16*myUnitSz/8);
                             
-                           
+                            var cubeGeometry = new THREE.BoxGeometry(myUnitSz, myUnitSz*2, myUnitSz);
+                            //var wireMaterial = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe:true } );
+                            var wireMaterial = new THREE.MeshBasicMaterial( { transparent: true, opacity: 0 } );
+                            var CollidingCube = new THREE.Mesh( cubeGeometry, wireMaterial );
+                            
+                            CollidingCube.position.x = cube0.position.x;
+                            CollidingCube.position.z = cube0.position.z;
+                            CollidingCube.position.y = cube0.position.y;
+                            
+                            
+                            objects.push(cube0);
                         }
                         /**
                          * place randomly objects over the field
@@ -487,8 +499,20 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
 
 				document.addEventListener( 'keydown', onKeyDown, false );
 				document.addEventListener( 'keyup', onKeyUp, false );
-
-				raycaster = new THREE.Raycaster( new THREE.Vector3(), new THREE.Vector3( 0, - 1, 0 ), 0, 10 );
+                                // Set the rays for raycasting: one vector for every potential direction
+                                // Yep, this.rays[i] gives us : 0 => forward, 1 => forward-left, 2 => left, ...
+                                rays = [
+                                      new THREE.Vector3(0, 0, 1), //forward
+                                      new THREE.Vector3(1, 0, 1), //forward left
+                                      new THREE.Vector3(1, 0, 0), //left
+                                      new THREE.Vector3(1, 0, -1), //left backwards
+                                      new THREE.Vector3(0, 0, -1), //backwards
+                                      new THREE.Vector3(-1, 0, -1),//right backwards
+                                      new THREE.Vector3(-1, 0, 0), //right
+                                      new THREE.Vector3(-1, 0, 1)  //right forward
+                                    ];
+                                 bottomVector=new THREE.Vector3( 0, - 1, 0 ); //to down
+				raycaster = new THREE.Raycaster( new THREE.Vector3(), bottomVector, 0, 10 );
                                 
                                 //===draw world===
                                 renderer = new THREE.WebGLRenderer({alpha:true}) ;
@@ -521,7 +545,7 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
 				renderer.setSize( window.innerWidth, window.innerHeight );
 
 			}
-
+                       
 			function animate() {
 
 				requestAnimationFrame( animate );
@@ -529,9 +553,41 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
 				if ( controlsEnabled ) {
 					raycaster.ray.origin.copy( controls.getObject().position );
 					raycaster.ray.origin.y -= 10;
-
+                                        //isOnObject - a variable responsive for "falling" calculation. It is being processed separately,
+                                        //due to its legacy nature. bottomVector is being called for it.
+                                        //the problem in this code is in the wrong directions of vectors
+                                        var rotationVectorFunction = controls.getDirection();
+                                        var rotationVectorValue=new THREE.Vector3(0.0,0.0,0.0);
+                                        var rotationVectorValue2=rotationVectorFunction(rotationVectorValue);
+                                        console.log(rotationVectorValue2);
+                                        
+                                        
+                                        //for (var i = 0; i < rays.length; i += 1) {
+                                        //    raycaster.ray.origin.copy( controls.getObject().position );
+                                        //    raycaster.ray.direction = rays[i];
+                                        //    
+                                        //    var intersections2 = raycaster.intersectObjects( objects );
+                                        //    if (intersections2.length > 0) { /*we have caught some mesh to collide!*/
+                                        //        //console.log(intersections2);
+                                        //        if ((i === 0 /*|| i === 1 || i === 7*/)&&(moveForward===true)) { //not moving forward
+                                        //            //alert("canceled move forward");
+                                        //            moveForward=false;
+                                        //        } else {
+                                        //        if ((/*i === 3 || */i === 4 /*|| i === 5*/)&&(moveBackward===true)) { //not moving backward
+                                        //            moveBackward=false;
+                                        //        } }
+                                        //        if ((/*i === 1 || */i === 2 /*|| i === 3*/)&&(moveLeft===true)) {
+                                        //            moveLeft = false;
+                                        //        } else {
+                                        //        if ((/*i === 5 ||*/ i === 6 /*|| i === 7*/)&&(moveRight===true)) {
+                                        //            moveRight = false;
+                                        //        } }
+                                        //    }
+                                        //}
+                                        
+                                        raycaster.ray.direction = bottomVector;
 					var intersections = raycaster.intersectObjects( objects );
-
+                                            //http://webmaestro.fr/collisions-detection-three-js-raycasting/
 					var isOnObject = intersections.length > 0;
 
 					var time = performance.now();
@@ -539,20 +595,25 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
 
 					velocity.x -= velocity.x * 10.0 * delta;
 					velocity.z -= velocity.z * 10.0 * delta;
-
 					velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
 
-					if ( moveForward ) velocity.z -= 400.0 * delta;
-					if ( moveBackward ) velocity.z += 400.0 * delta;
+					if ( moveForward === true ) { 
+                                            velocity.z -= 400.0 * delta; }
+					if ( moveBackward === true ) { 
+                                            velocity.z += 400.0 * delta; 
+                                        }
 
-					if ( moveLeft ) velocity.x -= 400.0 * delta;
-					if ( moveRight ) velocity.x += 400.0 * delta;
+					if ( moveLeft === true ) {
+                                            velocity.x -= 400.0 * delta;
+                                        }
+					if ( moveRight ===true ) {
+                                            velocity.x += 400.0 * delta;
+                                        }
 
 					if ( isOnObject === true ) {
 						velocity.y = Math.max( 0, velocity.y );
-
-						canJump = true;
-                                                
+                                               
+						canJump = true;                                                
 					}
 
 					controls.getObject().translateX( velocity.x * delta );
@@ -563,9 +624,7 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
 
 						velocity.y = 0;
 						controls.getObject().position.y = controlsHeight;
-
 						canJump = true;
-
 					}
 
 					prevTime = time;
