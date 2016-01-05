@@ -23,7 +23,13 @@
 				background-color: rgba(0,0,0,0.5);
 
 			}
-
+                        #info {
+                            width:100%;
+                            text-align: center;
+                            position: absolute;
+                            top:0;
+                            z-index: 3;
+                        }
 			#instructions {
 
 				width: 100%;
@@ -59,6 +65,8 @@
 		<script src="PointerLockControls.js"></script>
                 <script src="threex.dynamictexture.js"></script>
                 <script type="text/javascript" src="itmloader2.js"> </script>
+                <script type="text/javascript" src="gridCollision.js"> </script>
+                <div id="info">YAY!</div>
 		<div id="blocker">
 
 			<div id="instructions">
@@ -80,17 +88,22 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                                 return Math.floor(Math.random() * (max - min + 1)) + min;
                             }
                             function random_character() {
-                                var chars = "0123456789abcdefghijklmnopqurstuvwxyzABCDEFGHIJKLMNOPQURSTUVWXYZ";
-                                return chars.substr( Math.floor(Math.random() * 62), 1);
+                                var chars = "0123456789abcdefghijklmnopqurstuvwxyzABCDEFGHIJKLMNOPQURSTUVWXYZ\'.,*()+-=[]{}:;~%/";
+                                return chars.substr( Math.floor(Math.random() * 81), 1);
                             }
 
-                        nkicollection = loadbase2("itmbase2.xml");
+                        var nkicollection = loadbase2("itmbase2.xml");
                         //console.log(nkicollection);
-                        
+                            var availableNKIindexes; 
+                            
 			var camera, scene, renderer;
 			var geometry, material, mesh;
 			var controls;
 			var objects = [];
+                        
+                        var palette = ["red", "yellow", "green", "blue", "cyan", "purple", "brown"];
+                        var pLength = palette.length-1;
+                        
 			var raycaster;
                         var rays;
                         var bottomVector;
@@ -99,14 +112,16 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                         var planedepth; var planewidth; var nkiNum;
                         var myUnitSz=20;
                         var controlsHeight=myUnitSz;
-                        var allNKI; //array of Basic NKI. sparse array. It's ok, it won't use much memory
+                        var allNKI; //array of Basic NKI. sparse array. It's ok, it won't use much memory. hmm. might be used for collision detection too
+                        var prevPosition=new THREE.Vector3(0,0,0);
                         
-                        function BasicNKI(xcoord, ycoord, descrline) { //basic struct for NKI
+                        function BasicNKI(xcoord, ycoord, descrline, inpContentIndx) { //basic struct for NKI
                             /*integer (logic) coordinates of NKI*/
                             this.X = xcoord;
                             this.Y = ycoord;
-                            //a description of NKI
+                            //a symbol of NKI
                             this.descr = descrline;
+                            this.content=inpContentIndx;
                         }
                         //THREEJS and WebGL init routines
                         function defPlane(w, h, rtAngleDeg, texPath, texMode, centerPos) {
@@ -123,7 +138,17 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                             yobaplane.rotateOnAxis(new THREE.Vector3(0, 0, 1), degInRad(rtAngleDeg.z));
                             return yobaplane;
                         }
-                        
+                        function checkCollisionGrid(inpHorizontalPoint1, inpVerticalPoint1) {
+                            for(var i=0; i<allCollisionsArray.length; i++) {
+                                if (allCollisionsArray[i].testCollide(inpHorizontalPoint1,inpVerticalPoint1)!==null) {
+                                    /*console.log("horizontal: "+inpHorizontalPoint1+" verical: "+inpVerticalPoint1);*/
+                                    /*console.log("array: ");*/
+                                    /*console.log(allCollisionsArray[i]);*/
+                                    return allCollisionsArray[i];
+                                }
+                            }
+                            return null;
+                        }
                         function initFloor() {
                             geometry = new THREE.PlaneGeometry( 2000, 2000, 100, 100 );
                             geometry.rotateX( - Math.PI / 2 );
@@ -243,10 +268,11 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                             planeText4.position.setY(myUnitSz*1.5);
                             planeText4.rotateY(Math.PI/2);
                         }
-                        
-                        function addSingleNKI2(unitZ, unitX, NKISymbol) {
+                        /*actual subroutine to draw NKI (or just item, because they are the same during gameplay)*/
+                        function addSingleNKI2(unitZ, unitX, NKISymbol, NKIColor) {
                             var geometryBase = new THREE.BoxGeometry( myUnitSz, myUnitSz/4, myUnitSz );
-                            var material1 = new THREE.MeshBasicMaterial( {color: 0x00ff00} );
+                            var textureBase = THREE.ImageUtils.loadTexture( 'graphon/floor2.jpg' );
+                            var material1 = new THREE.MeshBasicMaterial( {map: textureBase} );
                             var cube1 = new THREE.Mesh(geometryBase, material1);
                             scene.add(cube1);
                             cube1.position.setX(unitX*myUnitSz);
@@ -256,26 +282,64 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                             var dynamicTexture	= new THREEx.DynamicTexture(10*2*myUnitSz/3,10*myUnitSz*2/3);
                             dynamicTexture.context.font	= "bolder "+myUnitSz*4+"px Verdana";
                             dynamicTexture.texture.anisotropy = renderer.getMaxAnisotropy();
-                            dynamicTexture.clear('cyan').drawText(NKISymbol, undefined, 4*myUnitSz, 'red');
-                            var letterMaterial	= new THREE.MeshBasicMaterial({map:dynamicTexture.texture});
+                            dynamicTexture.clear('transparent').drawText(NKISymbol, undefined, 4*myUnitSz, NKIColor);
+                            //dynamicTexture.addTexture('graphon/ScreenFinal2Small.png').drawText(NKISymbol, undefined, 4*myUnitSz, 'red');
+                            var letterMaterial	= new THREE.MeshBasicMaterial({map:dynamicTexture.texture, transparent:true});
+                            letterMaterial.side = THREE.DoubleSide;
+                            var geometryPlane = new THREE.PlaneGeometry( 2*myUnitSz/3, myUnitSz*2, 2*myUnitSz/3);
+                            var plane1=new THREE.Mesh( geometryPlane, letterMaterial );
+                            scene.add(plane1);
+                            plane1.position.setX(unitX*(myUnitSz));
+                            plane1.position.setZ((unitZ+4/9)*(myUnitSz));
+                            plane1.position.setY(myUnitSz);
+                            var plane2=new THREE.Mesh( geometryPlane, letterMaterial );
+                            scene.add(plane2);
+                            plane2.position.setX(unitX*(myUnitSz));
+                            plane2.position.setZ((unitZ-4/9)*(myUnitSz));
+                            plane2.position.setY(myUnitSz);
+                            plane2.rotateOnAxis(new THREE.Vector3(0, 1, 0), degInRad(180));
+                            
+                            var plane3=new THREE.Mesh(geometryPlane, letterMaterial);
+                            scene.add(plane3);
+                            plane3.position.setX((unitX+4/9)*(myUnitSz));
+                            plane3.position.setZ(unitZ*(myUnitSz));
+                            plane3.position.setY(myUnitSz);
+                            plane3.rotateOnAxis(new THREE.Vector3(0, 1, 0), degInRad(90));
+                            var plane4=new THREE.Mesh(geometryPlane, letterMaterial);
+                            scene.add(plane4);
+                            plane4.position.setX((unitX-4/9)*(myUnitSz));
+                            plane4.position.setZ(unitZ*(myUnitSz));
+                            plane4.position.setY(myUnitSz);
+                            plane4.rotateOnAxis(new THREE.Vector3(0, 1, 0), degInRad(270));
+                            
+                            var textureStalk = THREE.ImageUtils.loadTexture( 'graphon/ScreenFinal2Small.png' );
+                            var materialStalk=new THREE.MeshBasicMaterial( { map: textureStalk } );
                             var geometryStalk = new THREE.BoxGeometry( 2*myUnitSz/3, myUnitSz*2, 2*myUnitSz/3 );
-                            var cube0 = new THREE.Mesh(geometryStalk, letterMaterial);
+                            var cube0 = new THREE.Mesh(geometryStalk, materialStalk);
                             scene.add(cube0);
                             cube0.position.setX(unitX*myUnitSz);
                             cube0.position.setZ(unitZ*myUnitSz);
                             cube0.position.setY(myUnitSz);
+                            
+                            
                             
                             var cube2 = new THREE.Mesh(geometryBase, material1);
                             scene.add(cube2);
                             cube2.position.setX(unitX*myUnitSz);
                             cube2.position.setZ(unitZ*myUnitSz);
                             cube2.position.setY(16*myUnitSz/8);
-                            
+                            //adding collision
                             var cubeGeometry = new THREE.BoxGeometry(myUnitSz, myUnitSz*2, myUnitSz);
                             //var wireMaterial = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe:true } );
                             var wireMaterial = new THREE.MeshBasicMaterial( { transparent: true, opacity: 0 } );
                             var CollidingCube = new THREE.Mesh( cubeGeometry, wireMaterial );
                             
+                            allCollisionsArray.push(new collisionPlanarRecord( (unitX-1/2)*myUnitSz, (unitZ-1/2)*myUnitSz,
+                                                                               (unitX+1/2)*myUnitSz, (unitZ+1/2)*myUnitSz,
+                                                                               cube0.uuid,
+                                                                               unitX, unitZ
+                                                    )
+                                                    );
                             CollidingCube.position.x = cube0.position.x;
                             CollidingCube.position.z = cube0.position.z;
                             CollidingCube.position.y = cube0.position.y;
@@ -296,9 +360,11 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                             */
                             var randXPosition = getRandomInt(farXBorder,closeXBorder);
                             var randYPosition = getRandomInt(farYBorder,closeYBorder);
-                            console.log("(x="+randXPosition+";y="+randYPosition+")");
+                            console.log("(x="+randXPosition+";z="+randYPosition+")");
                             controls.getObject().position.x=randXPosition*myUnitSz;
-                            controls.getObject().position.y=randYPosition*myUnitSz;
+                            controls.getObject().position.z=randYPosition*myUnitSz;
+                            prevPosition.x = controls.getObject().position.x;
+                            prevPosition.z = controls.getObject().position.z;
                             //randomly place items over the field. use NKI for this
                             for (var i=0; i<nkiNum; i++) {
                                 var proceedCycle=false;
@@ -308,9 +374,14 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                                     if ((typeof allNKI[randXPosition]==="undefined")||(typeof allNKI[randXPosition][randYPosition]==="undefined")) {
                                         proceedCycle=false;
                                         var nki_sym=random_character();
-                                        addSingleNKI2(randXPosition,randYPosition, nki_sym);
+                                        var nki_color = palette[getRandomInt(0,pLength)];
+                                            var randNKI=getRandomInt(0,availableNKIindexes.length-1);
+                                            var nkiDescr=availableNKIindexes[randNKI];
+                                            availableNKIindexes.splice(randNKI,1);
+                                        addSingleNKI2(randXPosition,randYPosition, nki_sym, nki_color);
                                         if (typeof allNKI[randXPosition]==="undefined") { allNKI[randXPosition]=[]; }
-                                        allNKI[randXPosition][randYPosition] = new BasicNKI(randXPosition, randYPosition,nki_sym);
+                                        allNKI[randXPosition][randYPosition] = new BasicNKI(randXPosition, randYPosition,nki_sym,nkiDescr);
+                                        
                                     } else {
                                         //we already have NKI here, try again
                                         proceedCycle=true;
@@ -519,10 +590,13 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
 				//renderer.setClearColor( 0xff0000 );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
-				document.body.appendChild( renderer.domElement );
-                                
+				document.body.appendChild( renderer.domElement );                                
                                 planedepth=40; planewidth=40; 
                                 nkiNum=20; allNKI = [];
+                                
+                                availableNKIindexes = [];
+                                    var nkiBaseLength = nkicollection.length;
+                                    for (var i=0; i<nkiBaseLength; i++) {availableNKIindexes[i]=i+1;}
 				// floor
                                 initFloor2();
 				// objects
@@ -545,7 +619,7 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
 				renderer.setSize( window.innerWidth, window.innerHeight );
 
 			}
-                       
+                        
 			function animate() {
 
 				requestAnimationFrame( animate );
@@ -555,36 +629,9 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
 					raycaster.ray.origin.y -= 10;
                                         //isOnObject - a variable responsive for "falling" calculation. It is being processed separately,
                                         //due to its legacy nature. bottomVector is being called for it.
-                                        //the problem in this code is in the wrong directions of vectors
                                         var rotationVectorFunction = controls.getDirection();
                                         var rotationVectorValue=new THREE.Vector3(0.0,0.0,0.0);
-                                        var rotationVectorValue2=rotationVectorFunction(rotationVectorValue);
-                                        console.log(rotationVectorValue2);
-                                        
-                                        
-                                        //for (var i = 0; i < rays.length; i += 1) {
-                                        //    raycaster.ray.origin.copy( controls.getObject().position );
-                                        //    raycaster.ray.direction = rays[i];
-                                        //    
-                                        //    var intersections2 = raycaster.intersectObjects( objects );
-                                        //    if (intersections2.length > 0) { /*we have caught some mesh to collide!*/
-                                        //        //console.log(intersections2);
-                                        //        if ((i === 0 /*|| i === 1 || i === 7*/)&&(moveForward===true)) { //not moving forward
-                                        //            //alert("canceled move forward");
-                                        //            moveForward=false;
-                                        //        } else {
-                                        //        if ((/*i === 3 || */i === 4 /*|| i === 5*/)&&(moveBackward===true)) { //not moving backward
-                                        //            moveBackward=false;
-                                        //        } }
-                                        //        if ((/*i === 1 || */i === 2 /*|| i === 3*/)&&(moveLeft===true)) {
-                                        //            moveLeft = false;
-                                        //        } else {
-                                        //        if ((/*i === 5 ||*/ i === 6 /*|| i === 7*/)&&(moveRight===true)) {
-                                        //            moveRight = false;
-                                        //        } }
-                                        //    }
-                                        //}
-                                        
+                                        var rotationVectorValue2=rotationVectorFunction(rotationVectorValue);                                        
                                         raycaster.ray.direction = bottomVector;
 					var intersections = raycaster.intersectObjects( objects );
                                             //http://webmaestro.fr/collisions-detection-three-js-raycasting/
@@ -615,11 +662,51 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                                                
 						canJump = true;                                                
 					}
-
-					controls.getObject().translateX( velocity.x * delta );
-					controls.getObject().translateY( velocity.y * delta );
-					controls.getObject().translateZ( velocity.z * delta );
-
+                                        var xTranslation=velocity.x * delta;
+                                        var yTranslation=velocity.y * delta;
+                                        var zTranslation=velocity.z * delta;
+                                        
+                                            controls.getObject().translateX( xTranslation);
+                                            controls.getObject().translateY( yTranslation);
+                                            controls.getObject().translateZ( zTranslation);
+                                        
+                                        var collisionResult=checkCollisionGrid(controls.getObject().position.x, controls.getObject().position.z);
+                                        if (collisionResult!==null) {
+                                            console.log("found collision!");
+                                            console.log(collisionResult);
+                                            var NKI_line = nkicollection[(allNKI[collisionResult.intY][collisionResult.intX]).content];
+                                            document.getElementById("info").innerHTML = NKI_line;
+                                           
+                                           controls.getObject().position.x = prevPosition.x;
+                                           controls.getObject().position.z = prevPosition.z;
+                                           /*
+                                           if (moveForward===true) {
+                                               console.log("canceled forward movement");
+                                               moveForward=false;
+                                           } else {
+                                               if (moveBackward===true) {
+                                                   console.log("canceled backwards movement");
+                                                   moveBackward=false;
+                                               } else {
+                                                   if (moveLeft===true) {
+                                                       console.log("canceled left movement");
+                                                       moveLeft=false;
+                                                   } else {
+                                                       if (moveRight===true) {
+                                                           console.log("canceled right movement");
+                                                           moveRight=false;
+                                                       } else {
+                                                           console.log("nowhere to go?");
+                                                       }
+                                                   }
+                                               }
+                                           }
+                                           */
+                                        } else {
+                                            
+                                            prevPosition.x = controls.getObject().position.x;
+                                            prevPosition.z = controls.getObject().position.z;
+                                        }
 					if ( controls.getObject().position.y < controlsHeight ) {
 
 						velocity.y = 0;

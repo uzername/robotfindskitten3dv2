@@ -151,11 +151,25 @@ THREEx.DynamicTexture.prototype.drawImage	= function(/* same params as context2d
 /**
  * Jovan: fill with texture
  */
-THREEx.DynamicTexture.prototype.addTexture = function(stringTexture, xRepeat, yRepeat) {
+THREEx.DynamicTexture.prototype.addTexture = function(stringTexture) {
+/* 
 this.texture = THREE.ImageUtils.loadTexture(stringTexture);
 this.texture.wrapS = THREE.RepeatWrapping;
 this.texture.wrapT = THREE.RepeatWrapping;
 this.texture.repeat.set( xRepeat, yRepeat );
 this.texture.needsUpdate	= true;
+*/
+    var pic       = new Image();              // "Создаём" изображение
+    pic.src    = stringTexture;  // Источник изображения, позаимствовано на хабре
+    console.log("context inside addTexture:");
+    console.log(this.context);
+    var transmitContext=this.context;
+    var transmitCanvas=this.canvas;
+    pic.onload = function() {    // Событие onLoad, ждём момента пока загрузится изображение
+       console.log("Loading pic finished. console inside anonymous decl:");
+       console.log(transmitContext);
+       transmitContext.drawImage(pic, 0, 0, transmitCanvas.width, transmitCanvas.height);  // Рисуем изображение от точки с координатами 0, 0
+   };
+   this.texture.needsUpdate	= true;
 return this;
 }

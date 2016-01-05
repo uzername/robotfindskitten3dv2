@@ -1,7 +1,7 @@
 /* 
  * load items base from xml
  */
-var nkicollection; //names of nki s
+var nkicollection2; //names of nki s
 function loadbase2(filepath) { 
 if (window.XMLHttpRequest)  {// code for IE7+, Firefox, Chrome, Opera, Safari
   xmlhttp=new XMLHttpRequest();
