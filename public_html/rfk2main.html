@@ -29,6 +29,7 @@
                             position: absolute;
                             top:0;
                             z-index: 3;
+                            background:white;
                         }
 			#instructions {
 
@@ -57,7 +58,45 @@
 				cursor: pointer;
 
 			}
-
+                        #IntroLine1 {
+                        /*
+                            float:none;
+                            display: block;
+                            */
+                        }
+                        /*parameters*/
+                        #params-headbtn {
+                            position:absolute;
+                            background-color: darkgray;
+                            width:40%;
+                            margin-left:30%;
+                            margin-right:30%;
+                            float: none;
+                            font-size:20px;
+                            text-align: center;
+                            top: 30px;
+                            z-index:3;
+                            cursor: pointer;
+                        }
+                        #params-box {
+                            position: absolute;
+                            background-color: white;
+                            font-size:12px;
+                            width:40%;
+                            margin-left:30%;
+                            margin-right:30%;
+                            top:50px;
+                            float:none;
+                            z-index:3;
+                            display: none;
+                        }
+                        #params-okbtn {
+                            
+                            float:none;
+                        }
+                        #params-nkinum {
+                            float:none;
+                        }
 		</style>
 	</head>
 	<body>
@@ -66,13 +105,18 @@
                 <script src="threex.dynamictexture.js"></script>
                 <script type="text/javascript" src="itmloader2.js"> </script>
                 <script type="text/javascript" src="gridCollision.js"> </script>
-                <div id="info">YAY!</div>
+                <div id="info">&nbsp;</div>
 		<div id="blocker">
-
+                        <div id="params-headbtn">PARAMETERS</div>
+                        <div id="params-box"> 
+                            <div id="params-nkinum"><span>Items On Field</span> <input type="number" id="params-numberbox" min="3" max="400"/> </div>
+                            <input id="params-okbtn" type="button" value="Apply" onclick="processBtn()"/>
+                        </div>
+                        
 			<div id="instructions">
-                                " 'GO!' I told the box as it began to roll out of my workshop into the frozen desert beyond. 'FIND 
-KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <br/>
-				<span style="font-size:40px">Click to play</span>
+                                <span id="IntroLine1"> </span> <br />
+                                <span id="IntroLine2"> </span> <br />
+				<span id="IntroLine3" style="font-size:40px"> </span>
 				<br />
 				(W, A, S, D = Move, SPACE = Jump, MOUSE = Look around)
 			</div>
@@ -93,27 +137,49 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                             }
 
                         var nkicollection = loadbase2("itmbase2.xml");
-                        //console.log(nkicollection);
-                            var availableNKIindexes; 
-                            
+                        //allow here only constant definitions
+                        var availableNKIindexes; 
 			var camera, scene, renderer;
 			var geometry, material, mesh;
 			var controls;
-			var objects = [];
+			var objects;
+                        var skybox;
                         
-                        var palette = ["red", "yellow", "green", "blue", "cyan", "purple", "brown"];
+                        var kittenX;    //position of kitten
+                        var kittenY;    //position of kitten
+                        var kittenInit; //kitten initialized
+                        var kittenFound; //null by the moment. defined in init()
+                        var kittenFoundLine="You found kitten! Way to go, robot!";
+                        var kittenFoundLine2="PRESS ESC to release controls";
+                        var kittenFoundLine3="Reload page";
+                        var kittenIntroLine1="\" \'GO!\' I told the box as it began to roll out of my workshop into the frozen desert beyond. \'FIND KITTEN!\' \"";
+                        var kittenIntroLine2="The Book of Found Kittens, pages 43-4, author unknown";
+                        var kittenIntroLine3="Click to play";
+                        
+                        var robotObject=null;
+                        
+                        var palette = ["red", "yellow", "green", "blue", "cyan", "purple", "saddlebrown"];
                         var pLength = palette.length-1;
                         
 			var raycaster;
-                        var rays;
-                        var bottomVector;
+                        var rays; //unused. Left from previous attempt
+                        var bottomVector; //used for jumping
 			var blocker = document.getElementById( 'blocker' );
 			var instructions = document.getElementById( 'instructions' );                     
                         var planedepth; var planewidth; var nkiNum;
                         var myUnitSz=20;
-                        var controlsHeight=myUnitSz;
+                        var controlsHeight=myUnitSz/3; /*myUnitSz;*/
                         var allNKI; //array of Basic NKI. sparse array. It's ok, it won't use much memory. hmm. might be used for collision detection too
                         var prevPosition=new THREE.Vector3(0,0,0);
+                        
+                        document.getElementById("params-headbtn").addEventListener("click", function() {
+                                var parmbox=document.getElementById("params-box");
+                                    if (parmbox.style.display === "none") {
+                                        parmbox.style.display = "block";
+                                    } else {
+                                        parmbox.style.display = "none";
+                                    }
+                                });
                         
                         function BasicNKI(xcoord, ycoord, descrline, inpContentIndx) { //basic struct for NKI
                             /*integer (logic) coordinates of NKI*/
@@ -172,8 +238,8 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
 				scene.add( mesh );
                         }
                         function initFloor2() {
-                            yobaplane2=defPlane(planewidth*myUnitSz, planedepth*myUnitSz, new THREE.Vector3(90,0,0), 
-                                                'graphon/inside_floor.jpg', new function() {this.x=planewidth; this.y=planedepth;}, 
+                            yobaplane2=defPlane(planedepth*myUnitSz, planewidth*myUnitSz, new THREE.Vector3(90,0,0), 
+                                                'graphon/inside_floor.jpg', new function() {this.x=planedepth; this.y=planewidth;}, 
                                                 new THREE.Vector3(0,0,0));
                             scene.add( yobaplane2 ); yobaplane2.name="yobaplane2";
                         }
@@ -347,8 +413,18 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                             
                             objects.push(cube0);
                         }
+                        /*just makes an Object3D to be used as Robot. The robot projects */
+                        function initRobot() {
+                            var textureRobot = THREE.ImageUtils.loadTexture( 'graphon/robotGeneric.png' );
+                            var materialRobot=new THREE.MeshBasicMaterial( { map: textureRobot } );
+                            obj = new THREE.Mesh(new THREE.BoxGeometry(myUnitSz/3, myUnitSz/3, myUnitSz/3, 1, 1, 1),
+                                    /*new THREE.MeshBasicMaterial({ color: 0xFFFFFF } )*/
+                                    materialRobot
+                                    );
+                            return obj;
+                        }
                         /**
-                         * place randomly objects over the field
+                         * randomly place objects over the field. Also used to randomly place controls
                          * @returns {undefined}
                          */
                         function initObjects2() {
@@ -361,34 +437,48 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                             var randXPosition = getRandomInt(farXBorder,closeXBorder);
                             var randYPosition = getRandomInt(farYBorder,closeYBorder);
                             console.log("(x="+randXPosition+";z="+randYPosition+")");
-                            controls.getObject().position.x=randXPosition*myUnitSz;
-                            controls.getObject().position.z=randYPosition*myUnitSz;
-                            prevPosition.x = controls.getObject().position.x;
-                            prevPosition.z = controls.getObject().position.z;
+                            controls.getCharacterObject().position.z=randXPosition*myUnitSz;
+                            controls.getCharacterObject().position.x=randYPosition*myUnitSz;
+                            prevPosition.x = controls.getCharacterObject().position.x;
+                            prevPosition.z = controls.getCharacterObject().position.z;
                             //randomly place items over the field. use NKI for this
+                            var itmX; var itmY;
                             for (var i=0; i<nkiNum; i++) {
                                 var proceedCycle=false;
                                 do { 
                                 var randXPosition = getRandomInt(farXBorder,closeXBorder);
                                 var randYPosition = getRandomInt(farYBorder,closeYBorder);
+                                    //sometimes Robot might get trapped inside Item
+                                    if ((controls.getCharacterObject().position.z===randXPosition*myUnitSz)&&(controls.getCharacterObject().position.x===randYPosition*myUnitSz)) {continue;}
                                     if ((typeof allNKI[randXPosition]==="undefined")||(typeof allNKI[randXPosition][randYPosition]==="undefined")) {
                                         proceedCycle=false;
                                         var nki_sym=random_character();
                                         var nki_color = palette[getRandomInt(0,pLength)];
-                                            var randNKI=getRandomInt(0,availableNKIindexes.length-1);
+                                            var randNKI=getRandomInt(0,availableNKIindexes.length-2);
                                             var nkiDescr=availableNKIindexes[randNKI];
                                             availableNKIindexes.splice(randNKI,1);
                                         addSingleNKI2(randXPosition,randYPosition, nki_sym, nki_color);
                                         if (typeof allNKI[randXPosition]==="undefined") { allNKI[randXPosition]=[]; }
                                         allNKI[randXPosition][randYPosition] = new BasicNKI(randXPosition, randYPosition,nki_sym,nkiDescr);
-                                        
+                                        itmX=randXPosition; itmY=randYPosition;
+                                        if (kittenInit===false) {
+                                            kittenInit = Math.random() >= 0.5;
+                                            if(kittenInit===true) {
+                                                kittenX = randXPosition;
+                                                kittenY = randYPosition;
+                                            }
+                                        }
                                     } else {
                                         //we already have NKI here, try again
                                         proceedCycle=true;
                                     }
                                 } while (proceedCycle)
                             }
-                            
+                            if (kittenInit===false) {
+                                kittenInit = true;
+                                kittenX=itmX;
+                                kittenY=itmY;
+                            }
                         }
                         
                         function initObjects() {
@@ -412,6 +502,45 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                         }
                         //=============================
                         //here was a subroutine for skybox, but who needs a skybox when you have a cool fog which not even lags! 
+                        
+                        function defSkyBox() {
+                            var skyboxGeometry = new THREE.BoxGeometry(10000, 10000, 10000);
+                            /*var urls = ['graphon/skyboxpng/grnplsntft.png',
+                                        'graphon/skyboxpng/grnplsntbk.png',
+                                        'graphon/skyboxpng/grnplsntup.png',
+                                        'graphon/skyboxpng/grnplsntdn.png',
+                                        'graphon/skyboxpng/grnplsntrt.png',
+                                        'graphon/skyboxpng/grnplsntlf.png'
+                                    ]*/
+                             var urls = ['graphon/rfkskybox/starfield_ft.png',
+                                        'graphon/rfkskybox/starfield_bk.png',
+                                        'graphon/rfkskybox/starfield_up.png',
+                                        'graphon/rfkskybox/starfield_dn.png',
+                                        'graphon/rfkskybox/starfield_rt.png',
+                                        'graphon/rfkskybox/starfield_lf.png'
+                                    ]
+                            // wrap it up into the object that we need
+                                    var cubemap = THREE.ImageUtils.loadTextureCube(urls);
+                                    // set the format, likely RGB
+                                    // unless you've gone crazy
+                                    cubemap.format = THREE.RGBFormat;
+                                    //http://stackoverflow.com/questions/14371299/in-three-js-how-can-i-make-textures-resolution-independent-and-render-without-b
+                                        cubemap.magFilter = THREE.NearestFilter;
+                                        cubemap.minFilter = THREE.LinearMipMapLinearFilter;
+                                    var shader = THREE.ShaderLib[ "cube" ];
+                                    shader.uniforms[ "tCube" ].value = cubemap;
+                            var skyboxMaterial = new THREE.ShaderMaterial( {
+                                      fragmentShader: shader.fragmentShader,
+                                      vertexShader: shader.vertexShader,
+                                      uniforms: shader.uniforms,
+                                      depthWrite: false,
+                                      side: THREE.BackSide
+                                    });
+                            skybox = new THREE.Mesh(skyboxGeometry, skyboxMaterial); 
+                            skybox.rotation.x += Math.PI / 2;
+                            skybox.name = "skybox";
+                            scene.add(skybox);
+                        }
                         
                         //-------------------------------
 			// http://www.html5rocks.com/en/tutorials/pointerlock/intro/
@@ -455,6 +584,11 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
 				document.addEventListener( 'webkitpointerlockerror', pointerlockerror, false );
 
 				instructions.addEventListener( 'click', function ( event ) {
+                                        //if we have found kitten then the game is over, just keep the blocker
+                                        if (kittenFound===true) {
+                                            return;
+                                        }
+                                    
 					instructions.style.display = 'none';
 					// Ask the browser to lock the pointer
 					element.requestPointerLock = element.requestPointerLock || element.mozRequestPointerLock || element.webkitRequestPointerLock;
@@ -485,7 +619,7 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
 				instructions.innerHTML = 'Your browser doesn\'t seem to support Pointer Lock API';
 
 			}
-
+                        rootInit();
 			init();
 			animate();
 
@@ -499,16 +633,46 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
 
 			var prevTime = performance.now();
 			var velocity = new THREE.Vector3();
-
-			function init() {
-
-				camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 1000 );
+                        /**
+                         * init kernel parameters. It's unnecessary to reinit these. Should be called only at first time during page load
+                         * @returns {undefined}
+                         */
+                        function rootInit() {
+                            nkiNum=20;
+                            document.getElementById("params-numberbox").value=nkiNum;
+                            /*fragment1*/
+                            /*camera's distance is quite far, because we are using skybox*/
+                                camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
 				scene = new THREE.Scene();
 				var light = new THREE.HemisphereLight( 0xeeeeff, 0x777788, 0.75 );
 				light.position.set( 0.5, 1, 0.75 );
 				scene.add( light );
-				controls = new THREE.PointerLockControls( camera );
-				scene.add( controls.getObject() );
+                            /*fragment2*/
+                                //===draw world===
+                                renderer = new THREE.WebGLRenderer({alpha:true}) ;
+				//renderer.setClearColor( 0xff0000 );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				document.body.appendChild( renderer.domElement );                 
+                        }
+                        /**
+                         * init parameters of rfk. It's necessary to reinit these
+                         * @returns {undefined}
+                         */
+			function init() {
+                                kittenInit = false;
+                                kittenFound = false;
+                                kittenX=null; kittenY=null;
+                                objects = [];
+                                /*here was fragment1 which moved to rootInit*/
+                                robotObject = initRobot();
+				controls = new THREE.PointerLockControls( camera,robotObject );
+                                document.getElementById('IntroLine1').innerHTML=kittenIntroLine1;
+                                document.getElementById('IntroLine2').innerHTML=kittenIntroLine2;
+                                document.getElementById('IntroLine3').innerHTML=kittenIntroLine3;
+                                
+				scene.add( controls.getCharacterObject() );
+                                defSkyBox();
 				var onKeyDown = function ( event ) {
 					switch ( event.keyCode ) {
 
@@ -585,14 +749,12 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                                  bottomVector=new THREE.Vector3( 0, - 1, 0 ); //to down
 				raycaster = new THREE.Raycaster( new THREE.Vector3(), bottomVector, 0, 10 );
                                 
-                                //===draw world===
-                                renderer = new THREE.WebGLRenderer({alpha:true}) ;
-				//renderer.setClearColor( 0xff0000 );
-				renderer.setPixelRatio( window.devicePixelRatio );
-				renderer.setSize( window.innerWidth, window.innerHeight );
-				document.body.appendChild( renderer.domElement );                                
+                                /*fragment2*/               
+                                /*
                                 planedepth=40; planewidth=40; 
-                                nkiNum=20; allNKI = [];
+                                */
+                               planedepth=40; planewidth=20;
+                                 allNKI = [];
                                 
                                 availableNKIindexes = [];
                                     var nkiBaseLength = nkicollection.length;
@@ -600,13 +762,7 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
 				// floor
                                 initFloor2();
 				// objects
-				//initObjects();
                                 initObjects2();
-				//
-				
-
-				//
-
 				window.addEventListener( 'resize', onWindowResize, false );
 
 			}
@@ -620,12 +776,42 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
 
 			}
                         
+                        function kittenFoundSequence() {
+                            document.getElementById("info").innerHTML = kittenFoundLine;
+                            document.getElementById("IntroLine1").innerHTML = kittenFoundLine;
+                            document.getElementById("IntroLine2").innerHTML = kittenFoundLine2;
+                            document.getElementById("IntroLine3").innerHTML = kittenFoundLine3;
+                            kittenFound = true;
+                            //now, display blocker
+                            
+                                                controls.enabled = false;
+                                                controlsEnabled = false;
+						blocker.style.display = '-webkit-box';
+						blocker.style.display = '-moz-box';
+						blocker.style.display = 'box';
+						instructions.style.display = '';
+                           /* 
+                           var event = new Event("pointerlockchange");
+                           doument.dispatchEvent(event);
+                           */
+                        }
+                        function processBtn() {
+                            var numValue = document.getElementById("params-numberbox").value;
+                            if ((numValue!==null)&&((numValue>=5)&&(numValue<=400))) {
+                                nkiNum=numValue;
+                            } else {alert("bad value: "+nkiNum); nkiNum=20; }
+                            init();
+                        }
+                        /** main function which is called on every frame
+                         * here also goes collision detection.
+                         * @returns {undefined}
+                         */
 			function animate() {
 
 				requestAnimationFrame( animate );
 
 				if ( controlsEnabled ) {
-					raycaster.ray.origin.copy( controls.getObject().position );
+					raycaster.ray.origin.copy( controls.getCharacterObject().position );
 					raycaster.ray.origin.y -= 10;
                                         //isOnObject - a variable responsive for "falling" calculation. It is being processed separately,
                                         //due to its legacy nature. bottomVector is being called for it.
@@ -666,19 +852,24 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                                         var yTranslation=velocity.y * delta;
                                         var zTranslation=velocity.z * delta;
                                         
-                                            controls.getObject().translateX( xTranslation);
-                                            controls.getObject().translateY( yTranslation);
-                                            controls.getObject().translateZ( zTranslation);
+                                            controls.getCharacterObject().translateX( xTranslation);
+                                            controls.getCharacterObject().translateY( yTranslation);
+                                            controls.getCharacterObject().translateZ( zTranslation);
                                         
-                                        var collisionResult=checkCollisionGrid(controls.getObject().position.x, controls.getObject().position.z);
+                                        var collisionResult=checkCollisionGrid(controls.getCharacterObject().position.x, controls.getCharacterObject().position.z);
                                         if (collisionResult!==null) {
                                             console.log("found collision!");
                                             console.log(collisionResult);
                                             var NKI_line = nkicollection[(allNKI[collisionResult.intY][collisionResult.intX]).content];
-                                            document.getElementById("info").innerHTML = NKI_line;
+                                            if ((kittenInit===true)&&(kittenX===collisionResult.intY)&&(kittenY===collisionResult.intX)) {
+                                                //we have found kitten! start 'kitten found' sequence
+                                                kittenFoundSequence();
+                                            } else {
+                                                document.getElementById("info").innerHTML = NKI_line;
+                                            }
                                            
-                                           controls.getObject().position.x = prevPosition.x;
-                                           controls.getObject().position.z = prevPosition.z;
+                                           controls.getCharacterObject().position.x = prevPosition.x;
+                                           controls.getCharacterObject().position.z = prevPosition.z;
                                            /*
                                            if (moveForward===true) {
                                                console.log("canceled forward movement");
@@ -704,13 +895,13 @@ KITTEN!' " <br /> The Book of Found Kittens, pages 43-4, author unknown <br /> <
                                            */
                                         } else {
                                             
-                                            prevPosition.x = controls.getObject().position.x;
-                                            prevPosition.z = controls.getObject().position.z;
+                                            prevPosition.x = controls.getCharacterObject().position.x;
+                                            prevPosition.z = controls.getCharacterObject().position.z;
                                         }
-					if ( controls.getObject().position.y < controlsHeight ) {
+					if ( controls.getCharacterObject().position.y < controlsHeight ) {
 
 						velocity.y = 0;
-						controls.getObject().position.y = controlsHeight;
+						controls.getCharacterObject().position.y = controlsHeight;
 						canJump = true;
 					}
 
