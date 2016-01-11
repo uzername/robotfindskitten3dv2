@@ -170,7 +170,10 @@
                         var myUnitSz=20;
                         var controlsHeight=myUnitSz/3; /*myUnitSz;*/
                         var allNKI; //array of Basic NKI. sparse array. It's ok, it won't use much memory. hmm. might be used for collision detection too
-                        var prevPosition=new THREE.Vector3(0,0,0);
+                        var prevPosition;
+                        //during reinit we need some items to keep on stage and some items to remove.
+                        // Store here UUID of items to remove
+                        var removeSet;
                         
                         document.getElementById("params-headbtn").addEventListener("click", function() {
                                 var parmbox=document.getElementById("params-box");
@@ -341,6 +344,7 @@
                             var material1 = new THREE.MeshBasicMaterial( {map: textureBase} );
                             var cube1 = new THREE.Mesh(geometryBase, material1);
                             scene.add(cube1);
+                            removeSet.push(cube1.uuid);
                             cube1.position.setX(unitX*myUnitSz);
                             cube1.position.setZ(unitZ*myUnitSz);
                             cube1.position.setY(myUnitSz/8);
@@ -355,11 +359,13 @@
                             var geometryPlane = new THREE.PlaneGeometry( 2*myUnitSz/3, myUnitSz*2, 2*myUnitSz/3);
                             var plane1=new THREE.Mesh( geometryPlane, letterMaterial );
                             scene.add(plane1);
+                            removeSet.push(plane1.uuid);
                             plane1.position.setX(unitX*(myUnitSz));
                             plane1.position.setZ((unitZ+4/9)*(myUnitSz));
                             plane1.position.setY(myUnitSz);
                             var plane2=new THREE.Mesh( geometryPlane, letterMaterial );
                             scene.add(plane2);
+                            removeSet.push(plane2.uuid);
                             plane2.position.setX(unitX*(myUnitSz));
                             plane2.position.setZ((unitZ-4/9)*(myUnitSz));
                             plane2.position.setY(myUnitSz);
@@ -367,12 +373,14 @@
                             
                             var plane3=new THREE.Mesh(geometryPlane, letterMaterial);
                             scene.add(plane3);
+                            removeSet.push(plane3.uuid);
                             plane3.position.setX((unitX+4/9)*(myUnitSz));
                             plane3.position.setZ(unitZ*(myUnitSz));
                             plane3.position.setY(myUnitSz);
                             plane3.rotateOnAxis(new THREE.Vector3(0, 1, 0), degInRad(90));
                             var plane4=new THREE.Mesh(geometryPlane, letterMaterial);
                             scene.add(plane4);
+                            removeSet.push(plane4.uuid);
                             plane4.position.setX((unitX-4/9)*(myUnitSz));
                             plane4.position.setZ(unitZ*(myUnitSz));
                             plane4.position.setY(myUnitSz);
@@ -382,6 +390,7 @@
                             var materialStalk=new THREE.MeshBasicMaterial( { map: textureStalk } );
                             var geometryStalk = new THREE.BoxGeometry( 2*myUnitSz/3, myUnitSz*2, 2*myUnitSz/3 );
                             var cube0 = new THREE.Mesh(geometryStalk, materialStalk);
+                            removeSet.push(cube0.uuid);
                             scene.add(cube0);
                             cube0.position.setX(unitX*myUnitSz);
                             cube0.position.setZ(unitZ*myUnitSz);
@@ -391,6 +400,7 @@
                             
                             var cube2 = new THREE.Mesh(geometryBase, material1);
                             scene.add(cube2);
+                            removeSet.push(cube2.uuid);
                             cube2.position.setX(unitX*myUnitSz);
                             cube2.position.setZ(unitZ*myUnitSz);
                             cube2.position.setY(16*myUnitSz/8);
@@ -428,6 +438,7 @@
                          * @returns {undefined}
                          */
                         function initObjects2() {
+                            
                             var farXBorder=-planewidth/2+1; var farYBorder=-planedepth/2+1;
                             var closeXBorder=planewidth/2-1; var closeYBorder=planedepth/2-1;
                             /*
@@ -631,7 +642,7 @@
 			var moveRight = false;
 			var canJump = false;
 
-			var prevTime = performance.now();
+			var prevTime; /* = performance.now();*/ /*moving to init()*/
 			var velocity = new THREE.Vector3();
                         /**
                          * init kernel parameters. It's unnecessary to reinit these. Should be called only at first time during page load
@@ -647,32 +658,8 @@
 				var light = new THREE.HemisphereLight( 0xeeeeff, 0x777788, 0.75 );
 				light.position.set( 0.5, 1, 0.75 );
 				scene.add( light );
-                            /*fragment2*/
-                                //===draw world===
-                                renderer = new THREE.WebGLRenderer({alpha:true}) ;
-				//renderer.setClearColor( 0xff0000 );
-				renderer.setPixelRatio( window.devicePixelRatio );
-				renderer.setSize( window.innerWidth, window.innerHeight );
-				document.body.appendChild( renderer.domElement );                 
-                        }
-                        /**
-                         * init parameters of rfk. It's necessary to reinit these
-                         * @returns {undefined}
-                         */
-			function init() {
-                                kittenInit = false;
-                                kittenFound = false;
-                                kittenX=null; kittenY=null;
-                                objects = [];
-                                /*here was fragment1 which moved to rootInit*/
-                                robotObject = initRobot();
-				controls = new THREE.PointerLockControls( camera,robotObject );
-                                document.getElementById('IntroLine1').innerHTML=kittenIntroLine1;
-                                document.getElementById('IntroLine2').innerHTML=kittenIntroLine2;
-                                document.getElementById('IntroLine3').innerHTML=kittenIntroLine3;
+                            /*fragment3*/    
                                 
-				scene.add( controls.getCharacterObject() );
-                                defSkyBox();
 				var onKeyDown = function ( event ) {
 					switch ( event.keyCode ) {
 
@@ -734,6 +721,38 @@
 
 				document.addEventListener( 'keydown', onKeyDown, false );
 				document.addEventListener( 'keyup', onKeyUp, false );
+                            /*fragment2*/
+                                //===draw world===
+                                renderer = new THREE.WebGLRenderer({alpha:true}) ;
+				//renderer.setClearColor( 0xff0000 );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				document.body.appendChild( renderer.domElement );                 
+                        }
+                        /**
+                         * init parameters of rfk. It's necessary to reinit these
+                         * @returns {undefined}
+                         */
+			function init() {
+                            skipAnimate=true;
+                                prevTime = null;
+                                removeSet = [];
+                                kittenInit = false;
+                                kittenFound = false;
+                                kittenX=null; kittenY=null;
+                                prevPosition=new THREE.Vector3(0,0,0);
+                                objects = [];
+                                allCollisionsArray=[];
+                                /*here was fragment1 which moved to rootInit*/
+                                robotObject = initRobot();
+				controls = new THREE.PointerLockControls( camera,robotObject );
+                                document.getElementById('IntroLine1').innerHTML=kittenIntroLine1;
+                                document.getElementById('IntroLine2').innerHTML=kittenIntroLine2;
+                                document.getElementById('IntroLine3').innerHTML=kittenIntroLine3;
+                                
+				scene.add( controls.getCharacterObject() );
+                                /*fragment3 was here*/
+                                defSkyBox();
                                 // Set the rays for raycasting: one vector for every potential direction
                                 // Yep, this.rays[i] gives us : 0 => forward, 1 => forward-left, 2 => left, ...
                                 rays = [
@@ -764,7 +783,7 @@
 				// objects
                                 initObjects2();
 				window.addEventListener( 'resize', onWindowResize, false );
-
+                            skipAnimate=false;
 			}
 
 			function onWindowResize() {
@@ -800,14 +819,32 @@
                             if ((numValue!==null)&&((numValue>=5)&&(numValue<=400))) {
                                 nkiNum=numValue;
                             } else {alert("bad value: "+nkiNum); nkiNum=20; }
+                            //remove everything
+                            for (var i=0; i<removeSet.length; i++) {
+                                for( var j = scene.children.length - 1; j >= 0; j--) { 
+                                    obj = scene.children[j];
+                                    if (obj.uuid===removeSet[i]) {
+                                        scene.remove(obj); }
+                                }
+                            }
+                            /*
+                            for( var i = scene.children.length - 1; i >= 0; i--) { 
+                                obj = scene.children[i];
+                                scene.remove(obj); }
+                            */
+                            /*rootInit();*/
                             init();
                         }
+                        /*apparently js has eventdriven multithreading. This is a makeshift semaphore to avoid race condition*/
+                        var skipAnimate;
                         /** main function which is called on every frame
                          * here also goes collision detection.
                          * @returns {undefined}
                          */
 			function animate() {
-
+                                if ((skipAnimate!==null)&&(skipAnimate===true)) {
+                                    return;
+                                }
 				requestAnimationFrame( animate );
 
 				if ( controlsEnabled ) {
@@ -822,7 +859,7 @@
 					var intersections = raycaster.intersectObjects( objects );
                                             //http://webmaestro.fr/collisions-detection-three-js-raycasting/
 					var isOnObject = intersections.length > 0;
-
+                                        if (prevTime===null) {prevTime=performance.now();}
 					var time = performance.now();
 					var delta = ( time - prevTime ) / 1000;
 
