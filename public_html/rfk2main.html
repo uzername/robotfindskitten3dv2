@@ -230,7 +230,9 @@
                          * @returns {undefined}
                          */
                         function checkCollisionSceneBorders(inpHorizontalPoint1, inpVerticalPoint1) {
+                            /*
                             console.log("input: ("+inpHorizontalPoint1+";"+inpVerticalPoint1+")"+"boundaries: ( X:"+(farXBorder*myUnitSz)+";"+(closeXBorder*myUnitSz)+"|| Y:"+(farYBorder*myUnitSz)+";"+(closeYBorder*myUnitSz) );
+                            */
                             //return true if point is inside boundaries
                             if ( ( (inpHorizontalPoint1>=(farYBorder-0.75)*myUnitSz)&&(inpHorizontalPoint1<=(closeYBorder+0.75)*myUnitSz) ) && 
                                  ( (inpVerticalPoint1>=(farXBorder-0.75)*myUnitSz)&&(inpVerticalPoint1<=(closeXBorder+0.75)*myUnitSz) )
@@ -470,7 +472,9 @@
                             */
                             var randXPosition = getRandomInt(farXBorder,closeXBorder);
                             var randYPosition = getRandomInt(farYBorder,closeYBorder);
+                            /*
                             console.log("(x="+randXPosition+";z="+randYPosition+")");
+                            */
                             controls.getCharacterObject().position.z=randXPosition*myUnitSz;
                             controls.getCharacterObject().position.x=randYPosition*myUnitSz;
                             prevPosition.x = controls.getCharacterObject().position.x;
@@ -918,11 +922,15 @@
                                         
                                         var collisionResult=checkCollisionGrid(controls.getCharacterObject().position.x, controls.getCharacterObject().position.z);
                                         var borderCollisionResult = checkCollisionSceneBorders(controls.getCharacterObject().position.x, controls.getCharacterObject().position.z);
+                                        /*
                                         console.log("Border collision: "+borderCollisionResult);
+                                        */
                                         if ((collisionResult!==null)||(borderCollisionResult===true)) {
                                             if ((collisionResult!==null)&&(borderCollisionResult!==true)) {
+                                                /*
                                                 console.log("found collision with item!");
                                                 console.log(collisionResult);
+                                                */
                                                 var NKI_line = nkicollection[(allNKI[collisionResult.intY][collisionResult.intX]).content];
                                                 if ((kittenInit===true)&&(kittenX===collisionResult.intY)&&(kittenY===collisionResult.intX)) {
                                                     //we have found kitten! start 'kitten found' sequence
