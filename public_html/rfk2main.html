@@ -171,6 +171,11 @@
                         var controlsHeight=myUnitSz/3; /*myUnitSz;*/
                         var allNKI; //array of Basic NKI. sparse array. It's ok, it won't use much memory. hmm. might be used for collision detection too
                         var prevPosition;
+                        var farXBorder;
+                        var farYBorder;
+                        var closeXBorder;
+                        var closeYBorder;
+                        
                         //during reinit we need some items to keep on stage and some items to remove.
                         // Store here UUID of items to remove
                         var removeSet;
@@ -218,6 +223,24 @@
                             }
                             return null;
                         }
+                        /**
+                         * check whether a player fits inside the scene boundaries
+                         * @param {type} inpHorizontalPoint1
+                         * @param {type} inpVerticalPoint1
+                         * @returns {undefined}
+                         */
+                        function checkCollisionSceneBorders(inpHorizontalPoint1, inpVerticalPoint1) {
+                            console.log("input: ("+inpHorizontalPoint1+";"+inpVerticalPoint1+")"+"boundaries: ( X:"+(farXBorder*myUnitSz)+";"+(closeXBorder*myUnitSz)+"|| Y:"+(farYBorder*myUnitSz)+";"+(closeYBorder*myUnitSz) );
+                            //return true if point is inside boundaries
+                            if ( ( (inpHorizontalPoint1>=(farYBorder-0.75)*myUnitSz)&&(inpHorizontalPoint1<=(closeYBorder+0.75)*myUnitSz) ) && 
+                                 ( (inpVerticalPoint1>=(farXBorder-0.75)*myUnitSz)&&(inpVerticalPoint1<=(closeXBorder+0.75)*myUnitSz) )
+                               ) {
+                                    return false;
+                               } else {
+                                   return true;
+                               }
+                        }
+                        
                         function initFloor() {
                             geometry = new THREE.PlaneGeometry( 2000, 2000, 100, 100 );
                             geometry.rotateX( - Math.PI / 2 );
@@ -439,8 +462,8 @@
                          */
                         function initObjects2() {
                             
-                            var farXBorder=-planewidth/2+1; var farYBorder=-planedepth/2+1;
-                            var closeXBorder=planewidth/2-1; var closeYBorder=planedepth/2-1;
+                            farXBorder=-planewidth/2+1; farYBorder=-planedepth/2+1;
+                            closeXBorder=planewidth/2-1; closeYBorder=planedepth/2-1;
                             /*
                             addSingleNKI2(-20+1,-20+1,"1");
                             addSingleNKI2(20-1,20-1,"2");
@@ -894,42 +917,22 @@
                                             controls.getCharacterObject().translateZ( zTranslation);
                                         
                                         var collisionResult=checkCollisionGrid(controls.getCharacterObject().position.x, controls.getCharacterObject().position.z);
-                                        if (collisionResult!==null) {
-                                            console.log("found collision!");
-                                            console.log(collisionResult);
-                                            var NKI_line = nkicollection[(allNKI[collisionResult.intY][collisionResult.intX]).content];
-                                            if ((kittenInit===true)&&(kittenX===collisionResult.intY)&&(kittenY===collisionResult.intX)) {
-                                                //we have found kitten! start 'kitten found' sequence
-                                                kittenFoundSequence();
-                                            } else {
-                                                document.getElementById("info").innerHTML = NKI_line;
+                                        var borderCollisionResult = checkCollisionSceneBorders(controls.getCharacterObject().position.x, controls.getCharacterObject().position.z);
+                                        console.log("Border collision: "+borderCollisionResult);
+                                        if ((collisionResult!==null)||(borderCollisionResult===true)) {
+                                            if ((collisionResult!==null)&&(borderCollisionResult!==true)) {
+                                                console.log("found collision with item!");
+                                                console.log(collisionResult);
+                                                var NKI_line = nkicollection[(allNKI[collisionResult.intY][collisionResult.intX]).content];
+                                                if ((kittenInit===true)&&(kittenX===collisionResult.intY)&&(kittenY===collisionResult.intX)) {
+                                                    //we have found kitten! start 'kitten found' sequence
+                                                    kittenFoundSequence();
+                                                } else {
+                                                    document.getElementById("info").innerHTML = NKI_line;
+                                                }
                                             }
-                                           
                                            controls.getCharacterObject().position.x = prevPosition.x;
                                            controls.getCharacterObject().position.z = prevPosition.z;
-                                           /*
-                                           if (moveForward===true) {
-                                               console.log("canceled forward movement");
-                                               moveForward=false;
-                                           } else {
-                                               if (moveBackward===true) {
-                                                   console.log("canceled backwards movement");
-                                                   moveBackward=false;
-                                               } else {
-                                                   if (moveLeft===true) {
-                                                       console.log("canceled left movement");
-                                                       moveLeft=false;
-                                                   } else {
-                                                       if (moveRight===true) {
-                                                           console.log("canceled right movement");
-                                                           moveRight=false;
-                                                       } else {
-                                                           console.log("nowhere to go?");
-                                                       }
-                                                   }
-                                               }
-                                           }
-                                           */
                                         } else {
                                             
                                             prevPosition.x = controls.getCharacterObject().position.x;
